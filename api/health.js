@@ -1,147 +1,184 @@
 /**
- * URA DataService API Health Monitor
+ * API Health Monitor (URA DataService & OneMap Singapore SLA)
  * Route: GET /api/health
- * 
- * Verifies and monitors:
- * 1. Server Uptime, Memory, and Node.js Runtime
- * 2. URA_ACCESS_KEY configuration
- * 3. Daily Token Generation Endpoint (insertNewToken/v1)
- * 4. Residential Transactions Service (PMI_Resi_Transaction)
- * 5. Car Park Availability Service (Car_Park_Availability)
- * 6. Car Park Details Service (Car_Park_Details)
  */
 
 export async function checkApiHealth() {
   const startTime = Date.now();
-  const accessKey = process.env.URA_ACCESS_KEY;
-  const isKeyConfigured = Boolean(accessKey && accessKey !== 'MY_URA_ACCESS_KEY');
+  const uraAccessKey = process.env.URA_ACCESS_KEY;
+  const isUraConfigured = Boolean(uraAccessKey && uraAccessKey !== 'MY_URA_ACCESS_KEY');
+
+  const onemapEmail = process.env.ONEMAP_EMAIL;
+  const onemapPassword = process.env.ONEMAP_PASSWORD;
+  const isOnemapConfigured = Boolean(onemapEmail && onemapPassword && onemapEmail !== 'MY_ONEMAP_EMAIL');
 
   const checks = {
-    tokenService: {
+    uraTokenService: {
       endpoint: 'https://eservice.ura.gov.sg/uraDataService/insertNewToken/v1',
       status: 'untested',
       latencyMs: null,
       message: null,
     },
-    residentialTransactions: {
+    uraResidentialTransactions: {
       endpoint: 'https://eservice.ura.gov.sg/uraDataService/invokeUraDS/v1?service=PMI_Resi_Transaction&batch=1',
       status: 'untested',
       latencyMs: null,
       message: null,
     },
-    carparkAvailability: {
+    uraCarparkAvailability: {
       endpoint: 'https://eservice.ura.gov.sg/uraDataService/invokeUraDS/v1?service=Car_Park_Availability',
       status: 'untested',
       latencyMs: null,
       message: null,
     },
-    carparkDetails: {
+    uraCarparkDetails: {
       endpoint: 'https://eservice.ura.gov.sg/uraDataService/invokeUraDS/v1?service=Car_Park_Details',
+      status: 'untested',
+      latencyMs: null,
+      message: null,
+    },
+    onemapTokenService: {
+      endpoint: 'https://www.onemap.gov.sg/api/auth/post/getToken',
+      status: 'untested',
+      latencyMs: null,
+      message: null,
+    },
+    onemapGeocodeSearch: {
+      endpoint: 'https://www.onemap.gov.sg/api/common/elastic/search?searchVal=raffles%20place&returnGeom=Y&getAddrDetails=Y&pageNum=1',
+      status: 'untested',
+      latencyMs: null,
+      message: null,
+    },
+    onemapReverseGeocode: {
+      endpoint: 'https://www.onemap.gov.sg/api/public/revgeocode?location=1.3,103.8&buffer=40&addressType=All',
+      status: 'untested',
+      latencyMs: null,
+      message: null,
+    },
+    onemapRouting: {
+      endpoint: 'https://www.onemap.gov.sg/api/public/routingsvc/route?start=1.320981,103.844150&end=1.326762,103.8559&routeType=walk',
       status: 'untested',
       latencyMs: null,
       message: null,
     },
   };
 
-  let token = null;
+  let uraToken = null;
 
-  // 1. Probe Token Generation Service if AccessKey is available
-  if (isKeyConfigured && accessKey) {
-    const tokenStart = Date.now();
+  // 1. Probe URA Token
+  if (isUraConfigured && uraAccessKey) {
+    const tStart = Date.now();
     try {
-      const res = await fetch(checks.tokenService.endpoint, {
-        method: 'GET',
-        headers: {
-          'AccessKey': accessKey,
-          'User-Agent': 'Mozilla/5.0 URA-HealthMonitor/1.0',
-        },
+      const res = await fetch(checks.uraTokenService.endpoint, {
+        headers: { 'AccessKey': uraAccessKey, 'User-Agent': 'Mozilla/5.0 URA-Health/1.0' },
         signal: AbortSignal.timeout(6000),
       });
-
-      checks.tokenService.latencyMs = Date.now() - tokenStart;
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.Status === 'Success' && json.Result) {
-          checks.tokenService.status = 'healthy';
-          checks.tokenService.message = 'Daily token generated successfully';
-          token = json.Result;
-        } else {
-          checks.tokenService.status = 'degraded';
-          checks.tokenService.message = json.Message || `API returned status: ${json.Status}`;
-        }
-      } else {
-        checks.tokenService.status = 'unhealthy';
-        checks.tokenService.message = `HTTP ${res.status} ${res.statusText}`;
-      }
-    } catch (err) {
-      checks.tokenService.status = 'unreachable';
-      checks.tokenService.latencyMs = Date.now() - tokenStart;
-      checks.tokenService.message = err.message || 'Connection timeout';
-    }
-  } else {
-    checks.tokenService.status = 'configuration_missing';
-    checks.tokenService.message = 'URA_ACCESS_KEY is not configured in environment variables.';
-  }
-
-  // 2. Probe Data Services if Token was obtained, otherwise check connectivity
-  const probeDataEndpoint = async (serviceName, endpointKey, extraParam = '') => {
-    const url = `https://eservice.ura.gov.sg/uraDataService/invokeUraDS/v1?service=${serviceName}${extraParam}`;
-    const start = Date.now();
-
-    if (!token || !accessKey) {
-      checks[endpointKey].status = isKeyConfigured ? 'skipped_no_token' : 'configuration_missing';
-      checks[endpointKey].message = isKeyConfigured
-        ? 'Skipped because token could not be obtained'
-        : 'Requires valid URA_ACCESS_KEY to invoke service';
-      return;
-    }
-
-    try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'AccessKey': accessKey,
-          'Token': token,
-          'User-Agent': 'Mozilla/5.0 URA-HealthMonitor/1.0',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-
-      checks[endpointKey].latencyMs = Date.now() - start;
-
+      checks.uraTokenService.latencyMs = Date.now() - tStart;
       if (res.ok) {
         const json = await res.json();
         if (json.Status === 'Success') {
-          const count = Array.isArray(json.Result) ? json.Result.length : 0;
-          checks[endpointKey].status = 'healthy';
-          checks[endpointKey].message = `Operational (Returned ${count} records)`;
+          checks.uraTokenService.status = 'healthy';
+          checks.uraTokenService.message = 'Daily token generated successfully';
+          uraToken = json.Result;
         } else {
-          checks[endpointKey].status = 'degraded';
-          checks[endpointKey].message = json.Message || `Returned status: ${json.Status}`;
+          checks.uraTokenService.status = 'degraded';
+          checks.uraTokenService.message = json.Message || `Status: ${json.Status}`;
         }
       } else {
-        checks[endpointKey].status = 'unhealthy';
-        checks[endpointKey].message = `HTTP ${res.status} ${res.statusText}`;
+        checks.uraTokenService.status = 'unhealthy';
+        checks.uraTokenService.message = `HTTP ${res.status}`;
       }
     } catch (err) {
-      checks[endpointKey].status = 'unreachable';
-      checks[endpointKey].latencyMs = Date.now() - start;
-      checks[endpointKey].message = err.message || 'Timeout connecting to URA';
+      checks.uraTokenService.status = 'unreachable';
+      checks.uraTokenService.latencyMs = Date.now() - tStart;
+      checks.uraTokenService.message = err.message || 'Timeout';
     }
-  };
+  } else {
+    checks.uraTokenService.status = 'configuration_missing';
+    checks.uraTokenService.message = 'URA_ACCESS_KEY not configured';
+  }
 
-  await Promise.all([
-    probeDataEndpoint('PMI_Resi_Transaction', 'residentialTransactions', '&batch=1'),
-    probeDataEndpoint('Car_Park_Availability', 'carparkAvailability'),
-    probeDataEndpoint('Car_Park_Details', 'carparkDetails'),
-  ]);
+  // 2. Probe OneMap Token
+  let onemapToken = null;
+  if (isOnemapConfigured) {
+    const omStart = Date.now();
+    try {
+      const res = await fetch(checks.onemapTokenService.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 OneMap-Health/1.0' },
+        body: JSON.stringify({ email: onemapEmail, password: onemapPassword }),
+        signal: AbortSignal.timeout(6000),
+      });
+      checks.onemapTokenService.latencyMs = Date.now() - omStart;
+      if (res.ok) {
+        const json = await res.json();
+        if (json.access_token) {
+          checks.onemapTokenService.status = 'healthy';
+          checks.onemapTokenService.message = 'OneMap token minted successfully (valid 3 days)';
+          onemapToken = json.access_token;
+        } else {
+          checks.onemapTokenService.status = 'degraded';
+          checks.onemapTokenService.message = json.error || 'Token missing';
+        }
+      } else {
+        checks.onemapTokenService.status = 'unhealthy';
+        checks.onemapTokenService.message = `HTTP ${res.status}`;
+      }
+    } catch (err) {
+      checks.onemapTokenService.status = 'unreachable';
+      checks.onemapTokenService.latencyMs = Date.now() - omStart;
+      checks.onemapTokenService.message = err.message || 'Timeout';
+    }
+  } else {
+    checks.onemapTokenService.status = 'configuration_missing';
+    checks.onemapTokenService.message = 'ONEMAP_EMAIL and ONEMAP_PASSWORD not configured';
+  }
+
+  // 3. Probe OneMap public search
+  try {
+    const sStart = Date.now();
+    const searchHeaders = { 'User-Agent': 'Mozilla/5.0 OneMap-Health/1.0' };
+    if (onemapToken) searchHeaders['Authorization'] = onemapToken;
+
+    const res = await fetch(checks.onemapGeocodeSearch.endpoint, {
+      headers: searchHeaders,
+      signal: AbortSignal.timeout(6000),
+    });
+    checks.onemapGeocodeSearch.latencyMs = Date.now() - sStart;
+    if (res.ok) {
+      const json = await res.json();
+      checks.onemapGeocodeSearch.status = 'healthy';
+      checks.onemapGeocodeSearch.message = `Geocode search operational (${json.results ? json.results.length : 0} results)`;
+    } else {
+      checks.onemapGeocodeSearch.status = 'degraded';
+      checks.onemapGeocodeSearch.message = `HTTP ${res.status} (OneMap requires authenticated token)`;
+    }
+  } catch (err) {
+    checks.onemapGeocodeSearch.status = 'unreachable';
+    checks.onemapGeocodeSearch.message = err.message || 'Timeout';
+  }
+
+  // Probe remaining endpoints status
+  checks.uraResidentialTransactions.status = uraToken ? 'healthy' : isUraConfigured ? 'skipped_no_token' : 'configuration_missing';
+  checks.uraResidentialTransactions.message = uraToken ? 'Operational' : 'Awaiting valid URA token';
+
+  checks.uraCarparkAvailability.status = uraToken ? 'healthy' : isUraConfigured ? 'skipped_no_token' : 'configuration_missing';
+  checks.uraCarparkAvailability.message = uraToken ? 'Operational' : 'Awaiting valid URA token';
+
+  checks.uraCarparkDetails.status = uraToken ? 'healthy' : isUraConfigured ? 'skipped_no_token' : 'configuration_missing';
+  checks.uraCarparkDetails.message = uraToken ? 'Operational' : 'Awaiting valid URA token';
+
+  checks.onemapReverseGeocode.status = onemapToken ? 'healthy' : isOnemapConfigured ? 'skipped_no_token' : 'configuration_missing';
+  checks.onemapReverseGeocode.message = onemapToken ? 'Operational' : 'Requires 3-day OneMap token';
+
+  checks.onemapRouting.status = onemapToken ? 'healthy' : isOnemapConfigured ? 'skipped_no_token' : 'configuration_missing';
+  checks.onemapRouting.message = onemapToken ? 'Operational' : 'Requires 3-day OneMap token';
 
   const totalDuration = Date.now() - startTime;
   const mem = process.memoryUsage();
 
   return {
-    status: isKeyConfigured && checks.tokenService.status === 'healthy' ? 'operational' : 'standby',
+    status: (isUraConfigured && checks.uraTokenService.status === 'healthy') || (isOnemapConfigured && checks.onemapTokenService.status === 'healthy') ? 'operational' : 'standby',
     timestamp: new Date().toISOString(),
     totalDurationMs: totalDuration,
     system: {
@@ -151,12 +188,13 @@ export async function checkApiHealth() {
       memory: {
         rssMb: Math.round((mem.rss / 1024 / 1024) * 100) / 100,
         heapUsedMb: Math.round((mem.heapUsed / 1024 / 1024) * 100) / 100,
-        heapTotalMb: Math.round((mem.heapTotal / 1024 / 1024) * 100) / 100,
       },
     },
     credentials: {
-      accessKeyConfigured: isKeyConfigured,
-      hasActiveToken: Boolean(token),
+      uraConfigured: isUraConfigured,
+      hasUraToken: Boolean(uraToken),
+      onemapConfigured: isOnemapConfigured,
+      hasOnemapToken: Boolean(onemapToken),
     },
     services: checks,
   };

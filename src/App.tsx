@@ -9,6 +9,7 @@ import { MarketAnalytics } from './components/MarketAnalytics';
 import { DistrictMapExplorer } from './components/DistrictMapExplorer';
 import { ProjectComparison } from './components/ProjectComparison';
 import { CarparksView } from './components/CarparksView';
+import { OneMapExplorer } from './components/OneMapExplorer';
 import { CaveatAndStampDutyGuide } from './components/CaveatAndStampDutyGuide';
 import { UraFooter } from './components/UraFooter';
 import { RAW_TRANSACTIONS, POSTAL_DISTRICTS } from './data/mockUraData';
@@ -32,7 +33,7 @@ const INITIAL_FILTERS: FilterState = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'transactions' | 'analytics' | 'map' | 'comparison' | 'carparks' | 'guide'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'analytics' | 'map' | 'onemap' | 'comparison' | 'carparks' | 'guide'>('transactions');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
   const [areaUnit, setAreaUnit] = useState<'sqft' | 'sqm'>('sqft');
@@ -385,15 +386,18 @@ export default function App() {
           />
         )}
 
-        {/* Tab 4: Project Side-by-Side Comparison Matrix */}
+        {/* Tab 4: SLA OneMap Geocoding & Multimodal Routing */}
+        {activeTab === 'onemap' && <OneMapExplorer />}
+
+        {/* Tab 5: Project Side-by-Side Comparison Matrix */}
         {activeTab === 'comparison' && (
           <ProjectComparison onSelectProjectForFilter={handleFilterByProject} />
         )}
 
-        {/* Tab 5: Live Carparks Lots & Rates */}
+        {/* Tab 6: Live Carparks Lots & Rates */}
         {activeTab === 'carparks' && <CarparksView />}
 
-        {/* Tab 6: Caveats & Stamp Duty Legal Guide */}
+        {/* Tab 7: Caveats & Stamp Duty Legal Guide */}
         {activeTab === 'guide' && <CaveatAndStampDutyGuide />}
       </main>
 

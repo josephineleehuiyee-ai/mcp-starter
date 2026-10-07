@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import healthHandler from './api/health.js';
 // @ts-ignore
 import uraRouter from './api/ura.js';
+// @ts-ignore
+import onemapRouter from './api/onemap.js';
 
 dotenv.config();
 
@@ -23,6 +25,9 @@ app.use('/api/health', healthHandler);
 
 // 2. URA DataService Endpoints
 app.use('/api/ura', uraRouter);
+
+// 3. OneMap Singapore SLA Endpoints
+app.use('/api/onemap', onemapRouter);
 
 // Dev: Vite middlewares, Prod: Static build
 async function setupViteOrStatic() {
@@ -43,6 +48,7 @@ async function setupViteOrStatic() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`URA Property Market Information server running on http://0.0.0.0:${PORT}`);
     console.log(`Health monitor active on http://0.0.0.0:${PORT}/api/health`);
+    console.log(`OneMap routing & search active on http://0.0.0.0:${PORT}/api/onemap`);
   });
 }
 

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Menu, X, Search, FileText, Map, BarChart3, ArrowLeftRight, HelpCircle, Download, Car } from 'lucide-react';
+import { Menu, X, Search, FileText, Map, BarChart3, ArrowLeftRight, HelpCircle, Download, Car, Navigation } from 'lucide-react';
 
 interface UraHeaderProps {
-  activeTab: 'transactions' | 'analytics' | 'map' | 'comparison' | 'carparks' | 'guide';
-  setActiveTab: (tab: 'transactions' | 'analytics' | 'map' | 'comparison' | 'carparks' | 'guide') => void;
+  activeTab: 'transactions' | 'analytics' | 'map' | 'onemap' | 'comparison' | 'carparks' | 'guide';
+  setActiveTab: (tab: 'transactions' | 'analytics' | 'map' | 'onemap' | 'comparison' | 'carparks' | 'guide') => void;
   onExportCsv?: () => void;
   totalRecordsCount: number;
 }
@@ -20,6 +20,7 @@ export const UraHeader: React.FC<UraHeaderProps> = ({
     { id: 'transactions', label: 'Residential Transactions', icon: FileText },
     { id: 'analytics', label: 'Market Trends & Indices', icon: BarChart3 },
     { id: 'map', label: 'Map & Heatmap Explorer', icon: Map },
+    { id: 'onemap', label: 'OneMap SLA Routing', icon: Navigation },
     { id: 'comparison', label: 'Compare Projects', icon: ArrowLeftRight },
     { id: 'carparks', label: 'Live Carparks & Rates', icon: Car },
     { id: 'guide', label: 'Caveats & ABSD Guide', icon: HelpCircle },
