@@ -19,7 +19,7 @@ export const UraHeader: React.FC<UraHeaderProps> = ({
   const navItems = [
     { id: 'transactions', label: 'Residential Transactions', icon: FileText },
     { id: 'analytics', label: 'Market Trends & Indices', icon: BarChart3 },
-    { id: 'map', label: 'District Map Explorer', icon: Map },
+    { id: 'map', label: 'Map & Heatmap Explorer', icon: Map },
     { id: 'comparison', label: 'Compare Projects', icon: ArrowLeftRight },
     { id: 'carparks', label: 'Live Carparks & Rates', icon: Car },
     { id: 'guide', label: 'Caveats & ABSD Guide', icon: HelpCircle },

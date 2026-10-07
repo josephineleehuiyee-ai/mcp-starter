@@ -379,7 +379,10 @@ export default function App() {
 
         {/* Tab 3: Interactive District Map Explorer */}
         {activeTab === 'map' && (
-          <DistrictMapExplorer onSelectDistrictToFilter={handleFilterByDistrict} />
+          <DistrictMapExplorer
+            onSelectDistrictToFilter={handleFilterByDistrict}
+            transactions={allTransactions}
+          />
         )}
 
         {/* Tab 4: Project Side-by-Side Comparison Matrix */}
