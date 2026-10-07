@@ -8,11 +8,12 @@ import { TransactionDetailModal } from './components/TransactionDetailModal';
 import { MarketAnalytics } from './components/MarketAnalytics';
 import { DistrictMapExplorer } from './components/DistrictMapExplorer';
 import { ProjectComparison } from './components/ProjectComparison';
+import { CarparksView } from './components/CarparksView';
 import { CaveatAndStampDutyGuide } from './components/CaveatAndStampDutyGuide';
 import { UraFooter } from './components/UraFooter';
 import { RAW_TRANSACTIONS, POSTAL_DISTRICTS } from './data/mockUraData';
 import { FilterState, TransactionRecord } from './types/ura';
-import { Building, TrendingUp, DollarSign, Layers, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Building, TrendingUp, DollarSign, Layers, ChevronRight, FileSpreadsheet, Radio, RefreshCw } from 'lucide-react';
 
 const INITIAL_FILTERS: FilterState = {
   searchMode: 'project',
@@ -31,14 +32,46 @@ const INITIAL_FILTERS: FilterState = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'transactions' | 'analytics' | 'map' | 'comparison' | 'guide'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'analytics' | 'map' | 'comparison' | 'carparks' | 'guide'>('transactions');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
   const [areaUnit, setAreaUnit] = useState<'sqft' | 'sqm'>('sqft');
+  const [allTransactions, setAllTransactions] = useState<TransactionRecord[]>(RAW_TRANSACTIONS);
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [liveStatusText, setLiveStatusText] = useState('Standard Verified SLA Registry Stream');
+  const [isRefreshingLive, setIsRefreshingLive] = useState(false);
+
+  // Poll live URA transactions endpoint on mount
+  const syncUraDataService = async () => {
+    setIsRefreshingLive(true);
+    try {
+      const res = await fetch('/api/ura/residential-transactions');
+      const json = await res.json();
+      if (json.isLive && Array.isArray(json.data) && json.data.length > 0) {
+        setIsLiveConnected(true);
+        setLiveStatusText(json.message);
+        // Merge with raw transactions to give full coverage
+        const liveIds = new Set(json.data.map((d: any) => d.id));
+        const combined = [...json.data, ...RAW_TRANSACTIONS.filter((r) => !liveIds.has(r.id))];
+        setAllTransactions(combined);
+      } else {
+        setIsLiveConnected(false);
+        setLiveStatusText(json.message || 'Standard Verified SLA Registry Stream');
+      }
+    } catch {
+      setIsLiveConnected(false);
+    } finally {
+      setIsRefreshingLive(false);
+    }
+  };
+
+  React.useEffect(() => {
+    syncUraDataService();
+  }, []);
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
-    return RAW_TRANSACTIONS.filter((record) => {
+    return allTransactions.filter((record) => {
       // Search query (Project name or Street)
       if (filters.searchQuery.trim()) {
         const query = filters.searchQuery.toLowerCase();
@@ -243,10 +276,30 @@ export default function App() {
             </p>
           </div>
 
-          <div className="text-right hidden sm:block">
-            <span className="text-[11px] text-[#727783] block">Registry Coverage</span>
-            <span className="text-xs font-semibold text-[#004d99]">
-              Condominiums, Apartments & Landed Properties
+          <div className="flex flex-col sm:items-end gap-1.5">
+            <div className="flex items-center space-x-2">
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-xs ${
+                isLiveConnected
+                  ? 'bg-[#e0f2f1] text-[#00695c] border border-[#80cbc4]'
+                  : 'bg-[#f0eded] text-[#424752] border border-[#c2c6d4]'
+              }`}>
+                <Radio className={`w-3 h-3 ${isLiveConnected ? 'text-[#00695c] animate-pulse' : 'text-[#727783]'}`} />
+                <span>{isLiveConnected ? 'Live URA DataService Active' : 'SLA Registry Dataset'}</span>
+              </span>
+
+              <button
+                onClick={syncUraDataService}
+                disabled={isRefreshingLive}
+                className="inline-flex items-center gap-1 text-[11px] text-[#004d99] hover:underline cursor-pointer disabled:opacity-50"
+                title="Query URA DataService API for latest updates"
+              >
+                <RefreshCw className={`w-3 h-3 ${isRefreshingLive ? 'animate-spin' : ''}`} />
+                <span>Sync</span>
+              </button>
+            </div>
+
+            <span className="text-[11px] text-[#727783] hidden sm:block">
+              {liveStatusText}
             </span>
           </div>
         </div>
@@ -334,7 +387,10 @@ export default function App() {
           <ProjectComparison onSelectProjectForFilter={handleFilterByProject} />
         )}
 
-        {/* Tab 5: Caveats & Stamp Duty Legal Guide */}
+        {/* Tab 5: Live Carparks Lots & Rates */}
+        {activeTab === 'carparks' && <CarparksView />}
+
+        {/* Tab 6: Caveats & Stamp Duty Legal Guide */}
         {activeTab === 'guide' && <CaveatAndStampDutyGuide />}
       </main>
 
