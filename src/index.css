@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: #1b1c1c;
+    background-color: #fbf9f8;
+  }
+}
+
+.tabular-nums {
+  font-feature-settings: 'tnum' on, 'cv05' on;
+}

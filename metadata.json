@@ -1,0 +1,6 @@
+{
+  "name": "URA Property Market Information - Residential Transactions",
+  "description": "Singapore Urban Redevelopment Authority (URA) portal for private residential property transaction caveats, median prices, and market trends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
